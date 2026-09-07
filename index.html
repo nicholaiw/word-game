@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tapple</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  }
+
+  .board {
+    position: relative;
+    width: 760px;
+    height: 760px;
+  }
+
+  .letter {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    background: #fff;
+    color: #222;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .letter:hover {
+    border-color: #888;
+  }
+
+  .letter.used {
+    background: #eee;
+    color: #bbb;
+    border-color: #eee;
+    cursor: default;
+  }
+
+  .center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .timer-display {
+    font-size: 72px;
+    font-weight: 500;
+    color: #222;
+    min-width: 140px;
+    text-align: center;
+  }
+
+  .timer-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .timer-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: #444;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .timer-controls button:hover {
+    border-color: #888;
+  }
+
+  .start-btn {
+    margin-top: 6px;
+    padding: 8px 22px;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    color: #333;
+  }
+
+  .start-btn:hover {
+    border-color: #888;
+  }
+
+  .start-btn.running {
+    background: #f2f2f2;
+  }
+
+  body.ringing .center {
+    border-color: #d33;
+  }
+
+  body.ringing .timer-display {
+    color: #d33;
+  }
+</style>
+</head>
+<body>
+
+<div class="board" id="board">
+  <div class="center">
+    <div class="timer-display" id="display">10</div>
+    <div class="timer-controls">
+      <button id="minus">−</button>
+      <button id="plus">+</button>
+    </div>
+    <button class="start-btn" id="startBtn">Start</button>
+  </div>
+</div>
+
+<script>
+  const board = document.getElementById('board');
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const radius = 340;
+  const centerX = 380;
+  const centerY = 380;
+
+  letters.split('').forEach((letter, i) => {
+    const angle = (i / letters.length) * 2 * Math.PI - Math.PI / 2;
+    const x = centerX + radius * Math.cos(angle) - 36;
+    const y = centerY + radius * Math.sin(angle) - 36;
+
+    const el = document.createElement('div');
+    el.className = 'letter';
+    el.textContent = letter;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.addEventListener('click', () => {
+      el.classList.toggle('used');
+    });
+    board.appendChild(el);
+  });
+
+  let seconds = 10;
+  let remaining = seconds;
+  let intervalId = null;
+  let running = false;
+
+  const display = document.getElementById('display');
+  const startBtn = document.getElementById('startBtn');
+  const plusBtn = document.getElementById('plus');
+  const minusBtn = document.getElementById('minus');
+
+  function updateDisplay() {
+    display.textContent = remaining;
+  }
+
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (e) {}
+  }
+
+  function startTimer() {
+    if (running) return;
+    running = true;
+    startBtn.textContent = "Stop";
+    startBtn.classList.add('running');
+    remaining = seconds;
+    updateDisplay();
+    document.body.classList.remove('ringing');
+
+    intervalId = setInterval(() => {
+      remaining--;
+      updateDisplay();
+      if (remaining <= 0) {
+        clearInterval(intervalId);
+        running = false;
+        startBtn.textContent = "Start";
+        startBtn.classList.remove('running');
+        document.body.classList.add('ringing');
+        beep();
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    running = false;
+    clearInterval(intervalId);
+    startBtn.textContent = "Start";
+    startBtn.classList.remove('running');
+    remaining = seconds;
+    updateDisplay();
+    document.body.classList.remove('ringing');
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (running) {
+      stopTimer();
+    } else {
+      startTimer();
+    }
+  });
+
+  plusBtn.addEventListener('click', () => {
+    if (running) return;
+    seconds += 1;
+    remaining = seconds;
+    updateDisplay();
+  });
+
+  minusBtn.addEventListener('click', () => {
+    if (running) return;
+    seconds = Math.max(1, seconds - 1);
+    remaining = seconds;
+    updateDisplay();
+  });
+
+  updateDisplay();
+</script>
+
+</body>
+</html>
