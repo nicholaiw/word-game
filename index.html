@@ -2,12 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Tapple</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Letter Timer</title>
 <style>
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
-    height: 100vh;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -17,19 +21,19 @@
 
   .board {
     position: relative;
-    width: 760px;
-    height: 760px;
+    width: 860px;
+    height: 860px;
   }
 
   .letter {
     position: absolute;
-    width: 72px;
-    height: 72px;
+    width: 80px;
+    height: 80px;
     border: 1px solid #ccc;
     border-radius: 50%;
     background: #fff;
     color: #222;
-    font-size: 26px;
+    font-size: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -54,8 +58,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 320px;
-    height: 320px;
+    width: 360px;
+    height: 360px;
     border-radius: 50%;
     border: 1px solid #ccc;
     background: #fff;
@@ -64,10 +68,11 @@
     align-items: center;
     justify-content: center;
     gap: 14px;
+    transition: background 0.2s, border-color 0.2s;
   }
 
   .timer-display {
-    font-size: 72px;
+    font-size: 76px;
     font-weight: 500;
     color: #222;
     min-width: 140px;
@@ -97,6 +102,11 @@
     border-color: #888;
   }
 
+  .timer-display.hidden,
+  .timer-controls.hidden {
+    visibility: hidden;
+  }
+
   .start-btn {
     margin-top: 6px;
     padding: 8px 22px;
@@ -116,21 +126,24 @@
     background: #f2f2f2;
   }
 
-  body.ringing .center {
+  .center.ringing {
+    background: #d33;
     border-color: #d33;
   }
 
-  body.ringing .timer-display {
-    color: #d33;
+  .center.ringing .start-btn {
+    color: #fff;
+    background: transparent;
+    border-color: #fff;
   }
 </style>
 </head>
 <body>
 
 <div class="board" id="board">
-  <div class="center">
+  <div class="center" id="center">
     <div class="timer-display" id="display">10</div>
-    <div class="timer-controls">
+    <div class="timer-controls" id="controls">
       <button id="minus">−</button>
       <button id="plus">+</button>
     </div>
@@ -141,14 +154,14 @@
 <script>
   const board = document.getElementById('board');
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const radius = 340;
-  const centerX = 380;
-  const centerY = 380;
+  const radius = 385;
+  const centerX = 430;
+  const centerY = 430;
 
   letters.split('').forEach((letter, i) => {
     const angle = (i / letters.length) * 2 * Math.PI - Math.PI / 2;
-    const x = centerX + radius * Math.cos(angle) - 36;
-    const y = centerY + radius * Math.sin(angle) - 36;
+    const x = centerX + radius * Math.cos(angle) - 40;
+    const y = centerY + radius * Math.sin(angle) - 40;
 
     const el = document.createElement('div');
     el.className = 'letter';
@@ -161,18 +174,32 @@
     board.appendChild(el);
   });
 
-  let seconds = 10;
+  const STORAGE_KEY = 'letterTimerSeconds';
+  let seconds = parseInt(localStorage.getItem(STORAGE_KEY), 10) || 10;
   let remaining = seconds;
   let intervalId = null;
   let running = false;
 
+  const centerEl = document.getElementById('center');
   const display = document.getElementById('display');
+  const controls = document.getElementById('controls');
   const startBtn = document.getElementById('startBtn');
   const plusBtn = document.getElementById('plus');
   const minusBtn = document.getElementById('minus');
 
   function updateDisplay() {
     display.textContent = remaining;
+    if (running) {
+      display.classList.add('hidden');
+      controls.classList.add('hidden');
+    } else {
+      display.classList.remove('hidden');
+      controls.classList.remove('hidden');
+    }
+  }
+
+  function saveSeconds() {
+    localStorage.setItem(STORAGE_KEY, seconds);
   }
 
   function beep() {
@@ -196,18 +223,18 @@
     startBtn.textContent = "Stop";
     startBtn.classList.add('running');
     remaining = seconds;
+    centerEl.classList.remove('ringing');
     updateDisplay();
-    document.body.classList.remove('ringing');
 
     intervalId = setInterval(() => {
       remaining--;
-      updateDisplay();
       if (remaining <= 0) {
         clearInterval(intervalId);
         running = false;
         startBtn.textContent = "Start";
         startBtn.classList.remove('running');
-        document.body.classList.add('ringing');
+        centerEl.classList.add('ringing');
+        updateDisplay();
         beep();
       }
     }, 1000);
@@ -219,8 +246,8 @@
     startBtn.textContent = "Start";
     startBtn.classList.remove('running');
     remaining = seconds;
+    centerEl.classList.remove('ringing');
     updateDisplay();
-    document.body.classList.remove('ringing');
   }
 
   startBtn.addEventListener('click', () => {
@@ -235,6 +262,7 @@
     if (running) return;
     seconds += 1;
     remaining = seconds;
+    saveSeconds();
     updateDisplay();
   });
 
@@ -242,6 +270,7 @@
     if (running) return;
     seconds = Math.max(1, seconds - 1);
     remaining = seconds;
+    saveSeconds();
     updateDisplay();
   });
 
