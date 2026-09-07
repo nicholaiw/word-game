@@ -2,16 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Letter Timer</title>
 <style>
   * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-  }
   body {
+    margin: 0;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -21,19 +17,19 @@
 
   .board {
     position: relative;
-    width: 860px;
-    height: 860px;
+    width: 760px;
+    height: 760px;
   }
 
   .letter {
     position: absolute;
-    width: 80px;
-    height: 80px;
+    width: 90px;
+    height: 90px;
     border: 1px solid #ccc;
     border-radius: 50%;
     background: #fff;
     color: #222;
-    font-size: 28px;
+    font-size: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -58,8 +54,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 360px;
-    height: 360px;
+    width: 320px;
+    height: 320px;
     border-radius: 50%;
     border: 1px solid #ccc;
     background: #fff;
@@ -72,7 +68,7 @@
   }
 
   .timer-display {
-    font-size: 76px;
+    font-size: 72px;
     font-weight: 500;
     color: #222;
     min-width: 140px;
@@ -154,14 +150,14 @@
 <script>
   const board = document.getElementById('board');
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const radius = 385;
-  const centerX = 430;
-  const centerY = 430;
+  const radius = 340;
+  const centerX = 380;
+  const centerY = 380;
 
   letters.split('').forEach((letter, i) => {
     const angle = (i / letters.length) * 2 * Math.PI - Math.PI / 2;
-    const x = centerX + radius * Math.cos(angle) - 40;
-    const y = centerY + radius * Math.sin(angle) - 40;
+    const x = centerX + radius * Math.cos(angle) - 45;
+    const y = centerY + radius * Math.sin(angle) - 45;
 
     const el = document.createElement('div');
     el.className = 'letter';
