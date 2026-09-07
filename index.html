@@ -158,7 +158,6 @@
   const radius = 340;
   const centerX = 380;
   const centerY = 380;
-  const letterEls = [];
 
   letters.split('').forEach((letter, i) => {
     const angle = (i / letters.length) * 2 * Math.PI - Math.PI / 2;
@@ -172,7 +171,6 @@
     el.style.top = y + 'px';
     el.addEventListener('click', () => onLetterClick(el));
     board.appendChild(el);
-    letterEls.push(el);
   });
 
   const STORAGE_KEY = 'letterTimerSeconds';
@@ -229,6 +227,8 @@
         centerEl.classList.add('ringing');
         updateDisplay();
         beep();
+      } else {
+        updateDisplay();
       }
     }, 1000);
   }
@@ -253,3 +253,47 @@
     centerEl.classList.remove('ringing');
     updateDisplay();
   }
+
+  function onLetterClick(el) {
+    if (el.classList.contains('used')) return;
+    el.classList.add('used');
+
+    clearInterval(intervalId);
+    remaining = seconds;
+    centerEl.classList.remove('ringing');
+    running = true;
+    startBtn.textContent = "Stop";
+    startBtn.classList.add('running');
+    updateDisplay();
+    tickLoop();
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (running) {
+      stopTimer();
+    } else {
+      startTimer();
+    }
+  });
+
+  plusBtn.addEventListener('click', () => {
+    if (running) return;
+    seconds += 1;
+    remaining = seconds;
+    saveSeconds();
+    updateDisplay();
+  });
+
+  minusBtn.addEventListener('click', () => {
+    if (running) return;
+    seconds = Math.max(1, seconds - 1);
+    remaining = seconds;
+    saveSeconds();
+    updateDisplay();
+  });
+
+  updateDisplay();
+</script>
+
+</body>
+</html>
