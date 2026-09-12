@@ -48,10 +48,10 @@
     border-color: #888;
   }
 
-  .letter.active {
-    background: #222;
-    color: #fff;
-    border-color: #222;
+  .letter.grayed {
+    background: #ddd;
+    color: #aaa;
+    border-color: #ddd;
   }
 
   /* Number shown only while dragging to set duration */
@@ -115,10 +115,7 @@
 
   const STORAGE_KEY = 'letterTimerSeconds';
   let seconds = parseInt(localStorage.getItem(STORAGE_KEY), 10) || 3;
-  let remaining = seconds;
   let intervalId = null;
-  let running = false;
-  let activeEl = null;
 
   function saveSeconds() {
     localStorage.setItem(STORAGE_KEY, seconds);
@@ -148,12 +145,18 @@
     const fontSize = cellSize * 0.42;
 
     board.style.gap = gapPx + 'px';
+
+    // Preserve existing grayed/white state across relayouts (e.g. rotation)
+    const grayedSet = new Set(
+      Array.from(board.querySelectorAll('.letter.grayed')).map(el => el.textContent)
+    );
+
     board.innerHTML = '';
-    activeEl = null;
 
     letters.forEach((letter) => {
       const el = document.createElement('div');
       el.className = 'letter';
+      if (grayedSet.has(letter)) el.classList.add('grayed');
       el.textContent = letter;
       el.style.width = cellSize + 'px';
       el.style.height = cellSize + 'px';
@@ -163,18 +166,6 @@
     });
   }
 
-  function clearActive() {
-    document.querySelectorAll('.letter.active').forEach(el => el.classList.remove('active'));
-    activeEl = null;
-  }
-
-  function stopRound() {
-    clearInterval(intervalId);
-    running = false;
-    remaining = seconds;
-    clearActive();
-  }
-
   function runFlashThenReset() {
     flash.classList.add('blink');
     setTimeout(() => {
@@ -182,17 +173,18 @@
       flash.classList.add('solid');
       setTimeout(() => {
         flash.classList.remove('solid');
-        stopRound();
+        document.querySelectorAll('.letter.grayed').forEach(el => el.classList.remove('grayed'));
       }, 250);
     }, 500);
   }
 
-  function tick() {
+  function startTimer() {
+    clearInterval(intervalId);
+    let remaining = seconds;
     intervalId = setInterval(() => {
       remaining--;
       if (remaining <= 0) {
         clearInterval(intervalId);
-        running = false;
         if (navigator.vibrate) navigator.vibrate(200);
         runFlashThenReset();
       }
@@ -202,22 +194,11 @@
   function onLetterClick(el) {
     if (dragMoved) return; // ignore click that follows a drag gesture
 
-    if (el === activeEl) {
-      stopRound();
-      return;
-    }
-
-    clearInterval(intervalId);
-    clearActive();
-    el.classList.add('active');
-    activeEl = el;
-
-    remaining = seconds;
-    running = true;
-    tick();
+    el.classList.toggle('grayed');
+    startTimer(); // any tap — gray or white — restarts the countdown at full duration
   }
 
-  // --- Drag up/down anywhere (when idle) to set the duration ---
+  // --- Drag up/down anywhere to set the duration ---
   let dragging = false;
   let dragMoved = false;
   let dragStartY = 0;
@@ -234,7 +215,6 @@
   }
 
   function onPointerDown(e) {
-    if (running) return;
     dragging = true;
     dragMoved = false;
     dragStartY = e.clientY;
@@ -250,7 +230,6 @@
     if (!dragMoved) return;
     const change = Math.round(deltaY / PX_PER_SECOND);
     seconds = Math.max(1, dragStartSeconds + change);
-    remaining = seconds;
     showReadout(seconds);
   }
 
