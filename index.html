@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Letter Timer</title>
 <style>
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0;
+    width: 100%;
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
-    touch-action: manipulation;
+    touch-action: none;
+    -ms-touch-action: none;
   }
   body {
     display: flex;
@@ -21,85 +24,94 @@
   }
 
   .board {
-    position: relative;
-    width: 760px;
-    height: 760px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 2vmin;
+    width: 100vw;
+    height: 100vh;
+    padding: 2vmin;
   }
 
   .letter {
-    position: absolute;
-    width: 90px;
-    height: 90px;
     border: 1px solid #ccc;
-    border-radius: 50%;
+    border-radius: 18%;
     background: #fff;
     color: #222;
-    font-size: 32px;
+    font-size: 6.5vmin;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     user-select: none;
+    touch-action: manipulation;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
 
-  .letter:hover {
+  .letter:active {
     border-color: #888;
   }
 
   .letter.used {
     background: #eee;
-    color: #bbb;
+    color: #ccc;
     border-color: #eee;
     cursor: default;
   }
 
+  .letter.active {
+    background: #222;
+    color: #fff;
+    border-color: #222;
+  }
+
   .center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 320px;
-    height: 320px;
-    border-radius: 50%;
+    grid-column: 3 / 5;
+    grid-row: 2 / 4;
+    border-radius: 18%;
     border: 1px solid #ccc;
     background: #fff;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 14px;
+    gap: 1.2vmin;
     transition: background 0.2s, border-color 0.2s;
+    touch-action: manipulation;
   }
 
   .timer-display {
-    font-size: 72px;
+    font-size: 11vmin;
     font-weight: 500;
     color: #222;
-    min-width: 140px;
     text-align: center;
+    line-height: 1;
   }
 
   .timer-controls {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 3vmin;
   }
 
   .timer-controls button {
-    width: 40px;
-    height: 40px;
+    width: 6vmin;
+    height: 6vmin;
+    min-width: 34px;
+    min-height: 34px;
     border: 1px solid #ccc;
     background: #fff;
     border-radius: 50%;
-    font-size: 20px;
+    font-size: 3vmin;
     cursor: pointer;
     color: #444;
     line-height: 1;
     padding: 0;
+    touch-action: manipulation;
   }
 
-  .timer-controls button:hover {
+  .timer-controls button:active {
     border-color: #888;
   }
 
@@ -109,27 +121,42 @@
   }
 
   .start-btn {
-    margin-top: 6px;
-    padding: 8px 22px;
+    padding: 1.2vmin 4vmin;
     border: 1px solid #ccc;
     background: #fff;
     border-radius: 20px;
-    font-size: 16px;
+    font-size: 2.8vmin;
     cursor: pointer;
     color: #333;
-  }
-
-  .start-btn:hover {
-    border-color: #888;
+    touch-action: manipulation;
   }
 
   .start-btn.running {
     background: #f2f2f2;
   }
 
+  .reset-btn {
+    position: fixed;
+    top: 1.5vmin;
+    right: 1.5vmin;
+    padding: 1vmin 2.2vmin;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 20px;
+    font-size: 2vmin;
+    color: #666;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
   .center.ringing {
     background: #d33;
     border-color: #d33;
+  }
+
+  .center.ringing .timer-display,
+  .center.ringing .timer-controls button {
+    color: #fff;
   }
 
   .center.ringing .start-btn {
@@ -140,6 +167,8 @@
 </style>
 </head>
 <body>
+
+<button class="reset-btn" id="resetBtn">Reset</button>
 
 <div class="board" id="board">
   <div class="center" id="center">
@@ -155,29 +184,39 @@
 <script>
   const board = document.getElementById('board');
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const radius = 340;
-  const centerX = 380;
-  const centerY = 380;
 
-  letters.split('').forEach((letter, i) => {
-    const angle = (i / letters.length) * 2 * Math.PI - Math.PI / 2;
-    const x = centerX + radius * Math.cos(angle) - 45;
-    const y = centerY + radius * Math.sin(angle) - 45;
+  // Grid is 6 cols x 5 rows = 30 cells. Center block occupies rows 2-3, cols 3-4 (2x2 = 4 cells).
+  // That leaves exactly 26 cells for the alphabet, placed in row-major reading order,
+  // skipping the 4 cells reserved for the center block.
+  const reserved = new Set();
+  for (let r = 2; r <= 3; r++) {
+    for (let c = 3; c <= 4; c++) {
+      reserved.add(r + '-' + c);
+    }
+  }
 
-    const el = document.createElement('div');
-    el.className = 'letter';
-    el.textContent = letter;
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
-    el.addEventListener('click', () => onLetterClick(el));
-    board.appendChild(el);
-  });
+  let letterIndex = 0;
+  for (let r = 1; r <= 5 && letterIndex < letters.length; r++) {
+    for (let c = 1; c <= 6 && letterIndex < letters.length; c++) {
+      if (reserved.has(r + '-' + c)) continue;
+      const letter = letters[letterIndex++];
+      const el = document.createElement('div');
+      el.className = 'letter';
+      el.textContent = letter;
+      el.style.gridColumn = c;
+      el.style.gridRow = r;
+      el.addEventListener('click', () => onLetterClick(el));
+      board.appendChild(el);
+    }
+  }
 
   const STORAGE_KEY = 'letterTimerSeconds';
   let seconds = parseInt(localStorage.getItem(STORAGE_KEY), 10) || 10;
   let remaining = seconds;
   let intervalId = null;
   let running = false;
+  let activeLetterEl = null;
+  let audioCtx = null;
 
   const centerEl = document.getElementById('center');
   const display = document.getElementById('display');
@@ -185,6 +224,7 @@
   const startBtn = document.getElementById('startBtn');
   const plusBtn = document.getElementById('plus');
   const minusBtn = document.getElementById('minus');
+  const resetBtn = document.getElementById('resetBtn');
 
   function updateDisplay() {
     display.textContent = remaining;
@@ -201,9 +241,19 @@
     localStorage.setItem(STORAGE_KEY, seconds);
   }
 
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
   function beep() {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = getAudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -214,6 +264,9 @@
       osc.start();
       osc.stop(ctx.currentTime + 0.4);
     } catch (e) {}
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
   }
 
   function tickLoop() {
@@ -251,12 +304,22 @@
     startBtn.classList.remove('running');
     remaining = seconds;
     centerEl.classList.remove('ringing');
+    if (activeLetterEl) {
+      activeLetterEl.classList.remove('active');
+      activeLetterEl = null;
+    }
     updateDisplay();
   }
 
   function onLetterClick(el) {
     if (el.classList.contains('used')) return;
     el.classList.add('used');
+
+    if (activeLetterEl) {
+      activeLetterEl.classList.remove('active');
+    }
+    activeLetterEl = el;
+    el.classList.add('active');
 
     clearInterval(intervalId);
     remaining = seconds;
@@ -291,6 +354,22 @@
     saveSeconds();
     updateDisplay();
   });
+
+  resetBtn.addEventListener('click', () => {
+    stopTimer();
+    document.querySelectorAll('.letter.used').forEach(el => el.classList.remove('used'));
+  });
+
+  // Extra safety net against pinch-zoom / double-tap-zoom on mobile browsers
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 
   updateDisplay();
 </script>
